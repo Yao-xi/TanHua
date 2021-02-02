@@ -10,6 +10,7 @@ import com.yx.tanhua.server.vo.RecommendUserQueryParam;
 import com.yx.tanhua.server.vo.TodayBest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,13 @@ public class TodayBestService {
      */
     @Value("${tanhua.sso.default.user}")
     private Long defaultUser;
+    /**
+     * 默认推荐的用户列表id
+     * <p>
+     * 在配置文件中手动配置
+     */
+    @Value("tanhua.sso.default.recommend.users")
+    private String defaultRecommendUsers;
     
     /**
      * 查询推荐用户(今日佳人)信息
@@ -131,9 +139,19 @@ public class TodayBestService {
         }
         // 取用户列表
         List<RecommendUser> records = pageInfo.getRecords();
-        if (CollectionUtils.isEmpty(records)) {
-            // 没有查询到推荐的用户列表
-            return pageResult;
+        if(CollectionUtils.isEmpty(records)){
+            // 没有查询到推荐列表 使用默认推荐列表
+            String[] ss = StringUtils.split(defaultRecommendUsers, ',');
+            for (String s : ss) {
+                // 封装recommendUser对象
+                RecommendUser recommendUser = new RecommendUser();
+                recommendUser.setUserId(Long.valueOf(s));
+                recommendUser.setToUserId(user.getId());
+                // 使用随机得分
+                recommendUser.setScore(RandomUtils.nextDouble(70, 99));
+            
+                records.add(recommendUser);
+            }
         }
         
         // 收集推荐用户的id
