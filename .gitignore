@@ -1,0 +1,7 @@
+.idea/
+target/
+out/
+*.iml
+ArcFace64.dat
+banner.txt
+*.jar
