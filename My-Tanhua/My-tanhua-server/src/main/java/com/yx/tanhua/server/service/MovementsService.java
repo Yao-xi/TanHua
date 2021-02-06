@@ -419,6 +419,67 @@ public class MovementsService {
         }
     }
     
+    /**
+     * 查看自己的所有动态
+     */
+    public PageResult queryAlbumList(Long userId, Integer page, Integer pageSize) {
+        PageResult pageResult = new PageResult();
+        pageResult.setPage(page);
+        pageResult.setPagesize(pageSize);
+        // 远程调用查询动态发布列表
+        PageInfo<Publish> albumPageInfo = this.quanZiApi.queryAlbumList(userId, page, pageSize);
+        
+        List<Long> userIds = new ArrayList<>();
+        List<Movements> movementsList = new ArrayList<>();
+        if (getPageInfoUserIdsMovementsList(albumPageInfo, userIds, movementsList)) {
+            return pageResult;
+        }
+        
+        QueryWrapper<UserInfo> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("user_id", userIds);
+        List<UserInfo> userInfos = this.userInfoService.queryList(queryWrapper);
+        Map<Long, UserInfo> userInfoMap = new HashMap<>();
+        userInfos.forEach(userInfo -> userInfoMap.put(userInfo.getId(), userInfo));
+        
+        for (Movements movements : movementsList) {
+            this.fillValueToMovements(movements, userInfoMap.get(movements.getUserId()));
+        }
+        
+        pageResult.setItems(movementsList);
+        
+        return pageResult;
+    }
+    
+    /**
+     * 重复代码抽取
+     */
+    private boolean getPageInfoUserIdsMovementsList(PageInfo<Publish> pageInfo, List<Long> userIds,
+                                                    List<Movements> movementsList) {
+        // 获取好友动态内容的List对象
+        List<Publish> records = pageInfo.getRecords();
+        
+        if (CollectionUtils.isEmpty(records)) {
+            //没有动态信息
+            return true;
+        }
+        
+        
+        for (Publish record : records) {
+            // 构造并封装对象
+            Movements movements = getMovements(record);
+            // 添加进列表
+            movementsList.add(movements);
+        }
+        
+        
+        for (Movements movements : movementsList) {
+            if (!userIds.contains(movements.getUserId())) {
+                userIds.add(movements.getUserId());
+            }
+        }
+        return false;
+    }
+    
     public List<VisitorsVo> queryVisitorsList() {
         // 获取当前用户
         User user = UserThreadLocal.get();
@@ -538,29 +599,13 @@ public class MovementsService {
             pageInfo = this.quanZiApi.queryPublishList(user.getId(), page, pageSize);
         }
         
-        // 获取好友动态内容的List对象
-        List<Publish> records = pageInfo.getRecords();
-        
-        if (CollectionUtils.isEmpty(records)) {
-            //没有动态信息
-            return pageResult;
-        }
-        
-        // 获取动态的详细内容对象列表
-        List<Movements> movementsList = new ArrayList<>();
-        for (Publish record : records) {
-            // 构造并封装对象
-            Movements movements = getMovements(record);
-            // 添加进列表
-            movementsList.add(movements);
-        }
         
         // 获取发布动态的好友id列表
         List<Long> userIds = new ArrayList<>();
-        for (Movements movements : movementsList) {
-            if (!userIds.contains(movements.getUserId())) {
-                userIds.add(movements.getUserId());
-            }
+        // 获取动态的详细内容对象列表
+        List<Movements> movementsList = new ArrayList<>();
+        if (getPageInfoUserIdsMovementsList(pageInfo, userIds, movementsList)) {
+            return pageResult;
         }
         
         // 构造查询条件

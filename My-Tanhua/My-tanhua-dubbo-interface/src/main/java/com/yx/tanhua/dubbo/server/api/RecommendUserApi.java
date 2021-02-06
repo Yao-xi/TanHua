@@ -34,4 +34,16 @@ public interface RecommendUserApi {
      * @return {@link PageInfo<RecommendUser>} 分页的推荐用户信息
      */
     PageInfo<RecommendUser> queryPageInfo(Long userId, Integer pageNum, Integer pageSize);
+    
+    /**
+     * 查询推荐好友的缘分值
+     *
+     * @param userId
+     *     推荐用户id
+     * @param toUserId
+     *     用户id
+     *
+     * @return 缘分值
+     */
+    double queryScore(Long userId, Long toUserId);
 }

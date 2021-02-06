@@ -245,14 +245,20 @@ public class MovementsController {
     }
     
     /**
-     * 首页点击动态后 查看用户所有动态
+     * 查看自己的所有动态
      * <p>
-     * todo 暂不完成防止上面的方法出错
+     * 首页点击用户后 查看用户所有动态
      */
     @GetMapping("all")
     public ResponseEntity<PageResult> queryAlbumList(@RequestParam(value = "page", defaultValue = "1") Integer page,
                                                      @RequestParam(value = "pagesize", defaultValue = "10") Integer pageSize,
                                                      @RequestParam(value = "userId") Long userId) {
+        try {
+            PageResult pageResult = this.movementsService.queryAlbumList(userId, page, pageSize);
+            return ResponseEntity.ok(pageResult);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 }

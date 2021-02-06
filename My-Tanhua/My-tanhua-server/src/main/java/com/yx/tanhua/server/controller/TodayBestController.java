@@ -10,10 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("tanhua")
@@ -79,5 +76,20 @@ public class TodayBestController {
         
     }
     
-    
+    /**
+     * 查询今日佳人详情
+     *
+     * @param userId 佳人用户id
+     * @return
+     */
+    @GetMapping("{id}/personalInfo")
+    public ResponseEntity<TodayBest> queryTodayBest(@PathVariable("id") Long userId) {
+        try {
+            TodayBest todayBest = this.todayBestService.queryTodayBest(userId);
+            return ResponseEntity.ok(todayBest);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
 }

@@ -62,11 +62,33 @@ public class RecommendUserApiImpl implements RecommendUserApi {
     @Override
     public PageInfo<RecommendUser> queryPageInfo(Long userId, Integer pageNum, Integer pageSize) {
         // 分页并且排序参数
-        PageRequest pageRequest = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Order.desc("score")));
+        PageRequest pageRequest = PageRequest.of(pageNum - 1, pageSize,
+                                                 Sort.by(Sort.Order.desc("score")));
         // 查询参数
         Query query = Query.query(Criteria.where("toUserId").is(userId)).with(pageRequest);
         List<RecommendUser> recommendUserList = this.mongoTemplate.find(query, RecommendUser.class);
         // 封装成PageInfo对象 暂时不提供数据总数
         return new PageInfo<>(0, pageNum, pageSize, recommendUserList);
+    }
+    
+    /**
+     * 查询推荐好友的缘分值
+     *
+     * @param userId
+     *     推荐用户id
+     * @param toUserId
+     *     用户id
+     *
+     * @return 缘分值
+     */
+    @Override
+    public double queryScore(Long userId, Long toUserId) {
+        Query query = Query.query(Criteria.where("toUserId").is(toUserId)
+                                      .and("userId").is(userId));
+        RecommendUser recommendUser = this.mongoTemplate.findOne(query, RecommendUser.class);
+        if (recommendUser == null) {
+            return 0;
+        }
+        return recommendUser.getScore();
     }
 }

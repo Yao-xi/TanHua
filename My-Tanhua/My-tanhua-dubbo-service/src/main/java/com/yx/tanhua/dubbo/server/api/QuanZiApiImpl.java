@@ -6,6 +6,7 @@ import com.yx.tanhua.dubbo.server.pojo.*;
 import com.yx.tanhua.dubbo.server.service.IdService;
 import com.yx.tanhua.dubbo.server.vo.PageInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -252,7 +253,7 @@ public class QuanZiApiImpl implements QuanZiApi {
             comment.setPublishId(new ObjectId(publishId));
             comment.setCommentType(type);
             comment.setCreated(System.currentTimeMillis());
-    
+            
             // 设置发布人的id
             Publish publish = this.mongoTemplate.findById(comment.getPublishId(), Publish.class);
             if (publish != null) {
@@ -393,6 +394,53 @@ public class QuanZiApiImpl implements QuanZiApi {
     public List<Publish> queryPublishByPids(List<Long> pids) {
         Query query = Query.query(Criteria.where("pid").in(pids));
         return this.mongoTemplate.find(query, Publish.class);
+    }
+    
+    /**
+     * 查询相册表
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     page
+     * @param pageSize
+     *     pageSize
+     *
+     * @return {@link PageInfo<Publish>}
+     */
+    @Override
+    public PageInfo<Publish> queryAlbumList(Long userId, Integer page, Integer pageSize) {
+        // 封装分页信息
+        PageInfo<Publish> pageInfo = new PageInfo<>();
+        pageInfo.setPageNum(page);
+        pageInfo.setPageSize(pageSize);
+        pageInfo.setTotal(0); //不提供总数
+        
+        PageRequest pageRequest = PageRequest.of(page - 1, pageSize,
+                                                 Sort.by(Sort.Order.desc("created")));
+        Query query = new Query().with(pageRequest);
+        // 查询mongodb 按创建时间倒序
+        List<Album> albumList = mongoTemplate.find(query, Album.class,
+                                                   "quanzi_album_" + userId);
+        
+        if (CollectionUtils.isEmpty(albumList)) {
+            // 没有查询结果 返回默认值
+            return pageInfo;
+        }
+        // 通过Album获取publishId
+        List<ObjectId> publishIds = new ArrayList<>();
+        for (Album album : albumList) {
+            publishIds.add(album.getPublishId());
+        }
+        
+        // 查询mongodb获取Publish信息 按创建时间倒序
+        Query queryPublish = Query.query(Criteria.where("id").in(publishIds))
+            .with(Sort.by(Sort.Order.desc("created")));
+        List<Publish> publishList = this.mongoTemplate.find(queryPublish, Publish.class);
+        
+        pageInfo.setRecords(publishList);
+        
+        return pageInfo;
     }
     
     

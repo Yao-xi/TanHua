@@ -153,4 +153,18 @@ public interface QuanZiApi {
      * @return {@link List<Publish>}
      */
     List<Publish> queryPublishByPids(List<Long> pids);
+    
+    /**
+     * 查询相册表
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     page
+     * @param pageSize
+     *     pageSize
+     *
+     * @return {@link PageInfo<Publish>}
+     */
+    PageInfo<Publish> queryAlbumList(Long userId, Integer page, Integer pageSize);
 }

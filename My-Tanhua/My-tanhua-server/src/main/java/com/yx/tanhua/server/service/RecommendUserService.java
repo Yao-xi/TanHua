@@ -77,4 +77,21 @@ public class RecommendUserService {
         }
         return null;
     }
+    
+    /**
+     * 查询得分
+     *
+     * @param userId
+     * @param id
+     *
+     * @return double
+     */
+    public double queryScore(Long userId, Long id) {
+        try {
+            return this.recommendUserApi.queryScore(userId, id);
+        } catch (Exception e) {
+            log.error("远程调用失败 ~ ", e);
+        }
+        return 0;
+    }
 }

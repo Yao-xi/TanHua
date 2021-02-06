@@ -1,10 +1,11 @@
 package com.yx.tanhua.server.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.yx.tanhua.dubbo.server.pojo.RecommendUser;
-import com.yx.tanhua.dubbo.server.vo.PageInfo;
 import com.yx.tanhua.common.pojo.User;
 import com.yx.tanhua.common.pojo.UserInfo;
+import com.yx.tanhua.dubbo.server.pojo.RecommendUser;
+import com.yx.tanhua.dubbo.server.vo.PageInfo;
+import com.yx.tanhua.server.utils.UserThreadLocal;
 import com.yx.tanhua.server.vo.PageResult;
 import com.yx.tanhua.server.vo.RecommendUserQueryParam;
 import com.yx.tanhua.server.vo.TodayBest;
@@ -108,6 +109,38 @@ public class TodayBestService {
     }
     
     /**
+     * 查询今日佳人详情
+     *
+     * @param userId 佳人id
+     *
+     * @return {@link TodayBest}
+     */
+    public TodayBest queryTodayBest(Long userId) {
+        // 获取当前用户
+        User user = UserThreadLocal.get();
+    
+        TodayBest todayBest = new TodayBest();
+        // 查询mysql补全信息
+        UserInfo userInfo = this.userInfoService.queryById(userId);
+        todayBest.setId(userId);
+        todayBest.setAge(userInfo.getAge());
+        todayBest.setAvatar(userInfo.getLogo());
+        todayBest.setGender(userInfo.getSex().name().toLowerCase());
+        todayBest.setNickname(userInfo.getNickName());
+        todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
+        // 远程调用 查询mongodb获取缘分值
+        double score = this.recommendUserService.queryScore(userId, user.getId());
+        if(score == 0){
+            // 查询失败 使用默认分值
+            score = 98;
+        }
+        // 填充缘分值
+        todayBest.setFateValue(Double.valueOf(score).longValue());
+    
+        return todayBest;
+    }
+    
+    /**
      * 查询推荐用户列表
      *
      * @param queryParam
@@ -139,7 +172,7 @@ public class TodayBestService {
         }
         // 取用户列表
         List<RecommendUser> records = pageInfo.getRecords();
-        if(CollectionUtils.isEmpty(records)){
+        if (CollectionUtils.isEmpty(records)) {
             // 没有查询到推荐列表 使用默认推荐列表
             String[] ss = StringUtils.split(defaultRecommendUsers, ',');
             for (String s : ss) {
@@ -149,7 +182,7 @@ public class TodayBestService {
                 recommendUser.setToUserId(user.getId());
                 // 使用随机得分
                 recommendUser.setScore(RandomUtils.nextDouble(70, 99));
-            
+                
                 records.add(recommendUser);
             }
         }
