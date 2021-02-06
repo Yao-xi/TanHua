@@ -4,6 +4,7 @@ import com.yx.tanhua.server.service.MovementsService;
 import com.yx.tanhua.server.service.QuanziMQService;
 import com.yx.tanhua.server.vo.Movements;
 import com.yx.tanhua.server.vo.PageResult;
+import com.yx.tanhua.server.vo.VisitorsVo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("movements")
@@ -227,11 +230,17 @@ public class MovementsController {
     }
     
     /**
-     * todo 谁来看我-暂不完成.
-     * 该方法在时是为了不让上边方法报错
+     * 谁看过我
      */
     @GetMapping("/visitors")
-    public ResponseEntity<Movements> visitors() {
+    public ResponseEntity<List<VisitorsVo>> visitors() {
+        try {
+            // 调用service
+            List<VisitorsVo> list = this.movementsService.queryVisitorsList();
+            return ResponseEntity.ok(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
     

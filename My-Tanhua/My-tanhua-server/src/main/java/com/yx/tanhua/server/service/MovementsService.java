@@ -7,12 +7,15 @@ import com.yx.tanhua.common.pojo.UserInfo;
 import com.yx.tanhua.common.service.PicUploadService;
 import com.yx.tanhua.common.vo.PicUploadResult;
 import com.yx.tanhua.dubbo.server.api.QuanZiApi;
+import com.yx.tanhua.dubbo.server.api.VisitorsApi;
 import com.yx.tanhua.dubbo.server.pojo.Publish;
+import com.yx.tanhua.dubbo.server.pojo.Visitors;
 import com.yx.tanhua.dubbo.server.vo.PageInfo;
 import com.yx.tanhua.server.utils.RelativeDateFormat;
 import com.yx.tanhua.server.utils.UserThreadLocal;
 import com.yx.tanhua.server.vo.Movements;
 import com.yx.tanhua.server.vo.PageResult;
+import com.yx.tanhua.server.vo.VisitorsVo;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +23,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class MovementsService {
@@ -33,6 +34,9 @@ public class MovementsService {
     @SuppressWarnings("unused")
     @Reference(version = "1.0.0")
     private QuanZiApi quanZiApi;
+    
+    @Reference(version = "1.0.0")
+    private VisitorsApi visitorsApi;
     
     /**
      * 图片上传业务
@@ -415,6 +419,88 @@ public class MovementsService {
         }
     }
     
+    public List<VisitorsVo> queryVisitorsList() {
+        // 获取当前用户
+        User user = UserThreadLocal.get();
+        
+        /*
+         * 如果redis中存在上次查询的时间
+         * 就按照这个时间之后查询
+         * 如果没有就查询前5个
+         **/
+        
+        List<Visitors> visitors = null;
+        // 查redis
+        String redisKey = "visitor_date_" + user.getId();
+        String value = this.redisTemplate.opsForValue().get(redisKey);
+        if (StringUtils.isEmpty(value)) {
+            // 缓存中没有就查询前5个
+            visitors = this.visitorsApi.topVisitor(user.getId(), 5);
+        } else {
+            // 缓存中存在上次查询的时间
+            //noinspection ConstantConditions
+            visitors = this.visitorsApi.topVisitor(user.getId(), Long.valueOf(value));
+        }
+        
+        // 更新查询时间 (在用户点击查看访客详情的时候更新 URI:/users/friends/4)
+        // this.redisTemplate.opsForValue().set(redisKey, String.valueOf(System.currentTimeMillis()));
+        
+        if (CollectionUtils.isEmpty(visitors)) {
+            // 查询结果为空
+            return Collections.emptyList();
+        }
+        
+        // 补充查询结果缺少的字段
+        List<Long> userIds = new ArrayList<>();
+        for (Visitors visitor : visitors) {
+            userIds.add(visitor.getVisitorUserId());
+        }
+        
+        QueryWrapper<UserInfo> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("user_id", userIds);
+        // 查询mysql
+        List<UserInfo> userInfoList = this.userInfoService.queryList(queryWrapper);
+        // 用Map优化双层for
+        Map<Long, UserInfo> userInfoMap = new HashMap<>();
+        userInfoList.forEach(userInfo -> userInfoMap.put(userInfo.getId(), userInfo));
+        
+        List<VisitorsVo> visitorsVoList = new ArrayList<>();
+        
+        /*for (Visitors visitor : visitors) {
+            for (UserInfo userInfo : userInfoList) {
+                if (visitor.getVisitorUserId().longValue() == userInfo.getUserId().longValue()) {
+                    
+                    VisitorsVo visitorsVo = new VisitorsVo();
+                    visitorsVo.setAge(userInfo.getAge());
+                    visitorsVo.setAvatar(userInfo.getLogo());
+                    visitorsVo.setGender(userInfo.getSex().name().toLowerCase());
+                    visitorsVo.setId(userInfo.getUserId());
+                    visitorsVo.setNickname(userInfo.getNickName());
+                    visitorsVo.setTags(StringUtils.split(userInfo.getTags(), ','));
+                    visitorsVo.setFateValue(visitor.getScore().intValue());
+                    
+                    visitorsVoList.add(visitorsVo);
+                    break;
+                }
+            }
+        }*/
+        for (Visitors visitor : visitors) {
+            // 封装visitorsVo对象
+            VisitorsVo visitorsVo = new VisitorsVo();
+            UserInfo userInfo = userInfoMap.get(visitor.getVisitorUserId());
+            visitorsVo.setAge(userInfo.getAge());
+            visitorsVo.setAvatar(userInfo.getLogo());
+            visitorsVo.setGender(userInfo.getSex().name().toLowerCase());
+            visitorsVo.setId(userInfo.getUserId());
+            visitorsVo.setNickname(userInfo.getNickName());
+            visitorsVo.setTags(StringUtils.split(userInfo.getTags(), ','));
+            visitorsVo.setFateValue(visitor.getScore().intValue());
+            visitorsVoList.add(visitorsVo);
+        }
+        
+        return visitorsVoList;
+    }
+    
     /**
      * 查询动态 (已废弃)
      * <p>
@@ -546,59 +632,6 @@ public class MovementsService {
      * @return {@link PageResult} 分页查询结果
      */
     @SuppressWarnings("DuplicatedCode")
-    @Deprecated
-    private PageResult queryPublishList_old(User user, Integer page, Integer pageSize) {
-        // 1.创建分页查询对象
-        PageResult pageResult = new PageResult();
-        pageResult.setCounts(0);    //默认总条数为0
-        pageResult.setPages(0);     //默认总页数为0
-        pageResult.setPagesize(pageSize);
-        pageResult.setPage(page);
-        
-        // 2.获取用户ID
-        // 默认没有用户id,表示没有用户,即查询的是"推荐动态"
-        Long userId = null;
-        // 3.判断用户是否为空,获取用户id
-        if (user != null) {
-            // 如果用户id不为null,则表示有用户,则查询的是"用户好友的动态信息"
-            userId = user.getId();
-        }
-        // 4.远程调用 查询好友动态列表信息
-        PageInfo<Publish> pageInfo = quanZiApi.queryPublishList(userId, page, pageSize);
-        if (pageInfo == null) {
-            // 没有分页信息 返回默认值
-            return pageResult;
-        }
-        // 5.有分页信息 则更新分页查询信息
-        Integer counts = pageInfo.getTotal();
-        pageResult.setCounts(counts);
-        int pages = counts % pageSize == 0 ? counts / pageSize : counts / pageSize + 1;
-        pageResult.setPages(pages);
-        
-        // 6.获取"动态列表"
-        List<Publish> publishes = pageInfo.getRecords();
-        if (CollectionUtils.isEmpty(publishes)) {
-            // 没有查询到动态数据 返回默认值
-            return pageResult;
-        }
-        // 7.如果有"动态列表" 则获取"每条动态的状态信息(点赞数之类的)"
-        pageResult.setItems(fillValueToMovements(publishes));
-        return pageResult;
-    }
-    
-    /**
-     * 动态列表
-     *
-     * @param user
-     *     当前用户,如果为null,则查询"推荐动态"
-     * @param page
-     *     页码
-     * @param pageSize
-     *     每页显示个数
-     *
-     * @return {@link PageResult} 分页查询结果
-     */
-    @SuppressWarnings("DuplicatedCode")
     private PageResult queryPublishList(User user, Integer page, Integer pageSize) {
         // 1.创建分页查询条件
         PageResult pageResult = new PageResult();
@@ -607,29 +640,29 @@ public class MovementsService {
         pageResult.setPagesize(pageSize);
         pageResult.setPage(page);
         
-        PageInfo<Publish> pageInfo =null;
+        PageInfo<Publish> pageInfo = null;
         
         // 2.获取用户ID
         Long userId = null; // 默认没有用户id 即查询的是"推荐动态"
         
         // user == null 表示查询的是推荐
         // user != null 表示查询好友动态 此时pageInfo暂时为null
-        if(user == null){
+        if (user == null) {
             // 查询redis中推荐动态
             String key = "QUANZI_PUBLISH_RECOMMEND_" + UserThreadLocal.get().getId();
             String value = this.redisTemplate.opsForValue().get(key);
-            if(StringUtils.isNotEmpty(value)){
+            if (StringUtils.isNotEmpty(value)) {
                 // ------ 缓存命中 ------
                 // 处理value value="10091,10092,10093,10094"
                 String[] pids = StringUtils.split(value, ',');
                 // 计算分页后的开始索引
                 int startIndex = (page - 1) * pageSize;
                 // 防止索引越界
-                if(startIndex < pids.length && startIndex>=0){
+                if (startIndex < pids.length && startIndex >= 0) {
                     // 计算结束索引
                     int endIndex = startIndex + pageSize - 1;
                     // 防止索引越界
-                    if(endIndex >= pids.length){
+                    if (endIndex >= pids.length) {
                         endIndex = pids.length - 1;
                     }
                     // 构造list集合存储pid
@@ -647,7 +680,7 @@ public class MovementsService {
         }
         
         // 如果没有查询到推荐 (查询好友动态也不会查到推荐数据)
-        if(pageInfo == null){
+        if (pageInfo == null) {
             // 默认查询逻辑
             if (user != null) {
                 // 如果用户id不为null 则表示有用户 则查询的是"用户好友的动态信息"
@@ -666,7 +699,7 @@ public class MovementsService {
         pageResult.setCounts(counts);
         int pages = counts % pageSize == 0 ? counts / pageSize : counts / pageSize + 1;
         pageResult.setPages(pages);
-    
+        
         // 5.获取"动态列表"
         List<Publish> records = pageInfo.getRecords();
         // 6.判断是否有"动态列表" 如果没有 则直接返回默认值
@@ -753,5 +786,58 @@ public class MovementsService {
         User user = UserThreadLocal.get();
         // 查询好友动态
         return queryPublishList(user, page, pageSize);
+    }
+    
+    /**
+     * 动态列表
+     *
+     * @param user
+     *     当前用户,如果为null,则查询"推荐动态"
+     * @param page
+     *     页码
+     * @param pageSize
+     *     每页显示个数
+     *
+     * @return {@link PageResult} 分页查询结果
+     */
+    @SuppressWarnings("DuplicatedCode")
+    @Deprecated
+    private PageResult queryPublishList_old(User user, Integer page, Integer pageSize) {
+        // 1.创建分页查询对象
+        PageResult pageResult = new PageResult();
+        pageResult.setCounts(0);    //默认总条数为0
+        pageResult.setPages(0);     //默认总页数为0
+        pageResult.setPagesize(pageSize);
+        pageResult.setPage(page);
+        
+        // 2.获取用户ID
+        // 默认没有用户id,表示没有用户,即查询的是"推荐动态"
+        Long userId = null;
+        // 3.判断用户是否为空,获取用户id
+        if (user != null) {
+            // 如果用户id不为null,则表示有用户,则查询的是"用户好友的动态信息"
+            userId = user.getId();
+        }
+        // 4.远程调用 查询好友动态列表信息
+        PageInfo<Publish> pageInfo = quanZiApi.queryPublishList(userId, page, pageSize);
+        if (pageInfo == null) {
+            // 没有分页信息 返回默认值
+            return pageResult;
+        }
+        // 5.有分页信息 则更新分页查询信息
+        Integer counts = pageInfo.getTotal();
+        pageResult.setCounts(counts);
+        int pages = counts % pageSize == 0 ? counts / pageSize : counts / pageSize + 1;
+        pageResult.setPages(pages);
+        
+        // 6.获取"动态列表"
+        List<Publish> publishes = pageInfo.getRecords();
+        if (CollectionUtils.isEmpty(publishes)) {
+            // 没有查询到动态数据 返回默认值
+            return pageResult;
+        }
+        // 7.如果有"动态列表" 则获取"每条动态的状态信息(点赞数之类的)"
+        pageResult.setItems(fillValueToMovements(publishes));
+        return pageResult;
     }
 }

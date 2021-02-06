@@ -20,9 +20,10 @@ public class TxSMSTest {
     String templateID = "837429";
     /* 下发手机号码，采用 e.164 标准，+[国家或地区码][手机号]
      * 例如+8613711112222， 其中前面有一个+号 ，86为国家码，13711112222为手机号，最多不要超过200个手机号*/
-    String[] phoneNumbers = {"+8613783283476"};
+    // 13203966553 13783283476
+    String[] phoneNumbers = {"+8613203966553"};
     /* 模板参数: 若无模板参数，则设置为空*/
-    String[] templateParams = {"8888"};
+    String[] templateParams = {"0522"};
     
     @Test
     public void testSend() {
