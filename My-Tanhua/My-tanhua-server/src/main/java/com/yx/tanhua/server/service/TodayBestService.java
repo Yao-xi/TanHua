@@ -1,10 +1,12 @@
 package com.yx.tanhua.server.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yx.tanhua.common.pojo.User;
 import com.yx.tanhua.common.pojo.UserInfo;
 import com.yx.tanhua.dubbo.server.pojo.RecommendUser;
 import com.yx.tanhua.dubbo.server.vo.PageInfo;
+import com.yx.tanhua.server.pojo.Question;
 import com.yx.tanhua.server.utils.UserThreadLocal;
 import com.yx.tanhua.server.vo.PageResult;
 import com.yx.tanhua.server.vo.RecommendUserQueryParam;
@@ -15,16 +17,22 @@ import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.AsyncRestOperations;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Slf4j
 public class TodayBestService {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     @Autowired
     private UserService userService;
     
@@ -48,6 +56,14 @@ public class TodayBestService {
      */
     @Value("tanhua.sso.default.recommend.users")
     private String defaultRecommendUsers;
+    
+    @Value("${tanhua.sso.url}")
+    private String ssoUrl;
+    
+    @Autowired
+    private QuestionService questionService;
+    @Autowired
+    private RestTemplate restTemplate;
     
     /**
      * 查询推荐用户(今日佳人)信息
@@ -109,16 +125,89 @@ public class TodayBestService {
     }
     
     /**
+     * 回复陌生人问题 发送消息给对方
+     *
+     * @param userId 陌生人id
+     * @param reply 回复内容
+     *
+     * @return {@link Boolean}
+     */
+    public Boolean replyQuestion(Long userId, String reply) {
+        // 获取当前用户信息
+        User user = UserThreadLocal.get();
+        UserInfo userInfo = this.userInfoService.queryById(user.getId());
+        
+        // 构建消息内容
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("userId", user.getId().toString());
+        msg.put("nickname", userInfo.getNickName());
+        msg.put("strangerQuestion", this.queryQuestion(userId));
+        msg.put("reply", reply);
+        
+        try {
+            // 消息内容转json
+            String msgStr = MAPPER.writeValueAsString(msg);
+            
+            // 构造访问sso模块的url
+            String targetUrl = this.ssoUrl + "/user/huanxin/messages";
+            
+            // 设置请求头 application/x-www-form-urlencoded
+            // application/x-www-form-urlencoded:
+            //   url编码
+            //   数据被编码成以 '&' 分隔的键-值对, 同时以 '=' 分隔键和值.
+            //   非字母或数字的字符会被 percent-encoding(用"%"编码)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            
+            // 构造请求参数
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("target", userId.toString());
+            params.add("msg", msgStr);
+            
+            // 构造Http实体对象
+            HttpEntity<MultiValueMap<String, String>> httpEntity =
+                new HttpEntity<>(params, headers);
+            
+            // 发http请求
+            ResponseEntity<Void> responseEntity =
+                this.restTemplate.postForEntity(targetUrl, httpEntity, Void.class);
+            
+            return responseEntity.getStatusCodeValue() == 200;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 查询问题
+     *
+     * @param userId
+     *     用户id
+     *
+     * @return {@link String} 问题内容
+     */
+    public String queryQuestion(Long userId) {
+        Question question = this.questionService.queryQuestion(userId);
+        if (question != null) {
+            return question.getTxt();
+        }
+        return "";
+    }
+    
+    /**
      * 查询今日佳人详情
      *
-     * @param userId 佳人id
+     * @param userId
+     *     佳人id
      *
      * @return {@link TodayBest}
      */
     public TodayBest queryTodayBest(Long userId) {
         // 获取当前用户
         User user = UserThreadLocal.get();
-    
+        
         TodayBest todayBest = new TodayBest();
         // 查询mysql补全信息
         UserInfo userInfo = this.userInfoService.queryById(userId);
@@ -130,13 +219,13 @@ public class TodayBestService {
         todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
         // 远程调用 查询mongodb获取缘分值
         double score = this.recommendUserService.queryScore(userId, user.getId());
-        if(score == 0){
+        if (score == 0) {
             // 查询失败 使用默认分值
             score = 98;
         }
         // 填充缘分值
         todayBest.setFateValue(Double.valueOf(score).longValue());
-    
+        
         return todayBest;
     }
     

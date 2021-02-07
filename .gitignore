@@ -5,3 +5,4 @@ out/
 ArcFace64.dat
 banner.txt
 *.jar
+*.class

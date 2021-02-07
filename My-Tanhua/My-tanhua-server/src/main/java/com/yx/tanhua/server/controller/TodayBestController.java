@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("tanhua")
 @Slf4j
@@ -84,9 +86,48 @@ public class TodayBestController {
      */
     @GetMapping("{id}/personalInfo")
     public ResponseEntity<TodayBest> queryTodayBest(@PathVariable("id") Long userId) {
+        log.debug("请求查询今日佳人详情 ~");
         try {
             TodayBest todayBest = this.todayBestService.queryTodayBest(userId);
             return ResponseEntity.ok(todayBest);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+    
+    /**
+     * 查询陌生人问题
+     *
+     * @param userId
+     *     用户id
+     *
+     * @return {@link ResponseEntity<String>}
+     */
+    @GetMapping("strangerQuestions")
+    public ResponseEntity<String> queryQuestion(@RequestParam("userId") Long userId) {
+        log.debug("请求查询陌生人问题 ~");
+        try {
+            String question = this.todayBestService.queryQuestion(userId);
+            return ResponseEntity.ok(question);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+    
+    /**
+     * 回复陌生人问题
+     */
+    @PostMapping("strangerQuestions")
+    public ResponseEntity<Void> replyQuestion(@RequestBody Map<String, Object> param) {
+        try {
+            Long userId = Long.valueOf(param.get("userId").toString());
+            String reply = param.get("reply").toString();
+            Boolean result = this.todayBestService.replyQuestion(userId, reply);
+            if (result) {
+                return ResponseEntity.ok().build();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
