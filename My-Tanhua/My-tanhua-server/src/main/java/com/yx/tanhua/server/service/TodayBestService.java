@@ -110,6 +110,67 @@ public class TodayBestService {
     }
     
     /**
+     * 探花-展现卡片数据
+     * @return {@link List<TodayBest>}
+     */
+    public List<TodayBest> queryCardsList() {
+        // 获取当前用户
+        User user = UserThreadLocal.get();
+        // 分页查询尺寸 使用固定值50
+        int count = 50;
+        // 分页查询推荐用户
+        PageInfo<RecommendUser> pageInfo =
+            this.recommendUserService.queryRecommendUserList(user.getId(), 1, count);
+        if (CollectionUtils.isEmpty(pageInfo.getRecords())) {
+            // 未查到则使用默认推荐列表
+            String[] ss = StringUtils.split(defaultRecommendUsers, ',');
+            for (String s : ss) {
+                RecommendUser recommendUser = new RecommendUser();
+                recommendUser.setUserId(Long.valueOf(s));
+                recommendUser.setToUserId(user.getId());
+                pageInfo.getRecords().add(recommendUser);
+            }
+        }
+        // 获取所有的推荐用户
+        List<RecommendUser> records = pageInfo.getRecords();
+        // 展示个数 最多10个
+        int showCount = Math.min(10, records.size());
+        // 从所有的推荐用户中随机选
+        List<RecommendUser> newRecords = new ArrayList<>();
+        for (int i = 0; i < showCount; i++) {
+            // 随机选出推荐的好友
+            newRecords.add(records.get(RandomUtils.nextInt(0, records.size() - 1)));
+        }
+        // 整理用户id
+        Set<Long> userIds = new HashSet<>();
+        for (RecommendUser record : newRecords) {
+            userIds.add(record.getUserId());
+        }
+        
+        // 查mysql补全用户信息
+        QueryWrapper<UserInfo> queryWrapper =
+            new QueryWrapper<UserInfo>().in("user_id", userIds);
+        List<UserInfo> userInfos = this.userInfoService.queryList(queryWrapper);
+        List<TodayBest> todayBests = new ArrayList<>();
+        for (UserInfo userInfo : userInfos) {
+            // 补全用户信息
+            TodayBest todayBest = new TodayBest();
+            todayBest.setId(userInfo.getUserId());
+            setUserInfo(userInfo,todayBest);
+            // todayBest.setAvatar(userInfo.getLogo());
+            // todayBest.setNickname(userInfo.getNickName());
+            // todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
+            // todayBest.setGender(userInfo.getSex().getValue() == 1 ? "man" : "woman");
+            // todayBest.setAge(userInfo.getAge());
+            todayBest.setFateValue(0L);
+        
+            todayBests.add(todayBest);
+        }
+    
+        return todayBests;
+    }
+    
+    /**
      * 重复代码抽取
      * <p>
      * 将{@link UserInfo}的信息封装到{@link TodayBest}

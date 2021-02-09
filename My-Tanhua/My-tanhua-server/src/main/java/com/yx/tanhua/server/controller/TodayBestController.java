@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -133,4 +134,23 @@ public class TodayBestController {
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+    
+    
+    /**
+     * 探花-展现卡片数据
+     *
+     * @return {@link ResponseEntity<List<TodayBest>>}
+     */
+    @GetMapping("cards")
+    public ResponseEntity<List<TodayBest>> queryCardsList() {
+        try {
+            List<TodayBest> list = this.todayBestService.queryCardsList();
+            return ResponseEntity.ok(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+    
+    
 }
