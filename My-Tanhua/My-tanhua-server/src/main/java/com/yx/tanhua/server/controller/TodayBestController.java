@@ -152,5 +152,43 @@ public class TodayBestController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
     
+    /**
+     * 探花-左滑-喜欢
+     *
+     * @param likeUserId
+     *     对方的id
+     *
+     * @return {@link ResponseEntity<Void>}
+     */
+    @GetMapping("{id}/love")
+    public ResponseEntity<Void> likeUser(@PathVariable("id") Long likeUserId) {
+        try {
+            log.debug("请求喜欢~ likeUserId:"+likeUserId);
+            Boolean bool = this.todayBestService.likeUser(likeUserId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
     
+    /**
+     * 探花-右滑-不喜欢
+     *
+     * @param likeUserId
+     *     对方的id
+     *
+     * @return {@link ResponseEntity<Void>}
+     */
+    @GetMapping("{id}/unlove")
+    public ResponseEntity<Void> disLikeUser(@PathVariable("id") Long likeUserId) {
+        try {
+            log.debug("请求不喜欢~ likeUserId:"+likeUserId);
+            Boolean bool = this.todayBestService.disLikeUser(likeUserId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
 }

@@ -44,7 +44,7 @@ public class HuanXinService {
         String targetUrl = this.huanXinConfig.getUrl()
                            + this.huanXinConfig.getOrgName() + "/"
                            + this.huanXinConfig.getAppName() + "/users";
-        
+        log.debug("rest url="+targetUrl);
         String token = this.huanXinTokenService.getToken();
         
         try {
@@ -90,6 +90,7 @@ public class HuanXinService {
                            + this.huanXinConfig.getOrgName() + "/"
                            + this.huanXinConfig.getAppName() + "/users/" +
                            userId + "/contacts/users/" + friendId;
+        log.debug("rest url="+targetUrl);
         try {
             // 获取token
             String token = this.huanXinTokenService.getToken();
@@ -118,6 +119,7 @@ public class HuanXinService {
         String targetUrl = this.huanXinConfig.getUrl()
                            + this.huanXinConfig.getOrgName() + "/"
                            + this.huanXinConfig.getAppName() + "/messages";
+        log.debug("rest url="+targetUrl);
         try {
             // 获取环信token
             String token = this.huanXinTokenService.getToken();

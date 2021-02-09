@@ -1,9 +1,11 @@
 package com.yx.tanhua.server.service;
 
+import com.alibaba.dubbo.config.annotation.Reference;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yx.tanhua.common.pojo.User;
 import com.yx.tanhua.common.pojo.UserInfo;
+import com.yx.tanhua.dubbo.server.api.UserLikeApi;
 import com.yx.tanhua.dubbo.server.pojo.RecommendUser;
 import com.yx.tanhua.dubbo.server.vo.PageInfo;
 import com.yx.tanhua.server.pojo.Question;
@@ -24,7 +26,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.AsyncRestOperations;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -64,6 +65,10 @@ public class TodayBestService {
     private QuestionService questionService;
     @Autowired
     private RestTemplate restTemplate;
+    @Reference(version = "1.0.0")
+    private UserLikeApi userLikeApi;
+    @Autowired
+    private IMService imService;
     
     /**
      * 查询推荐用户(今日佳人)信息
@@ -110,7 +115,23 @@ public class TodayBestService {
     }
     
     /**
+     * 重复代码抽取
+     * <p>
+     * 将{@link UserInfo}的信息封装到{@link TodayBest}
+     * <p>
+     * {@code Avatar Nickname Tags Gender Age}
+     */
+    private void setUserInfo(UserInfo userInfo, TodayBest todayBest) {
+        todayBest.setAvatar(userInfo.getLogo());
+        todayBest.setNickname(userInfo.getNickName());
+        todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
+        todayBest.setGender(userInfo.getSex().getValue() == 1 ? "man" : "woman");
+        todayBest.setAge(userInfo.getAge());
+    }
+    
+    /**
      * 探花-展现卡片数据
+     *
      * @return {@link List<TodayBest>}
      */
     public List<TodayBest> queryCardsList() {
@@ -156,40 +177,60 @@ public class TodayBestService {
             // 补全用户信息
             TodayBest todayBest = new TodayBest();
             todayBest.setId(userInfo.getUserId());
-            setUserInfo(userInfo,todayBest);
+            setUserInfo(userInfo, todayBest);
             // todayBest.setAvatar(userInfo.getLogo());
             // todayBest.setNickname(userInfo.getNickName());
             // todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
             // todayBest.setGender(userInfo.getSex().getValue() == 1 ? "man" : "woman");
             // todayBest.setAge(userInfo.getAge());
             todayBest.setFateValue(0L);
-        
+            
             todayBests.add(todayBest);
         }
-    
+        
         return todayBests;
     }
     
     /**
-     * 重复代码抽取
-     * <p>
-     * 将{@link UserInfo}的信息封装到{@link TodayBest}
-     * <p>
-     * {@code Avatar Nickname Tags Gender Age}
+     * 喜欢
+     *
+     * @param likeUserId
+     *     对方的id
      */
-    private void setUserInfo(UserInfo userInfo, TodayBest todayBest) {
-        todayBest.setAvatar(userInfo.getLogo());
-        todayBest.setNickname(userInfo.getNickName());
-        todayBest.setTags(StringUtils.split(userInfo.getTags(), ','));
-        todayBest.setGender(userInfo.getSex().getValue() == 1 ? "man" : "woman");
-        todayBest.setAge(userInfo.getAge());
+    public Boolean likeUser(Long likeUserId) {
+        // 获取当前用户
+        User user = UserThreadLocal.get();
+        // 远程调用 保存喜欢记录
+        String id = this.userLikeApi.saveUserLike(user.getId(), likeUserId);
+        if (StringUtils.isEmpty(id)) {
+            return false;
+        }
+        // 检查是否是相互喜欢
+        if (this.userLikeApi.isMutualLike(user.getId(), likeUserId)) {
+            // 相互喜欢成为好友
+            this.imService.contactUser(likeUserId);
+        }
+        return true;
+    }
+    
+    /**
+     * 不喜欢
+     *
+     * @param likeUserId
+     *     对方的id
+     */
+    public Boolean disLikeUser(Long likeUserId) {
+        User user = UserThreadLocal.get();
+        return this.userLikeApi.deleteUserLike(user.getId(), likeUserId);
     }
     
     /**
      * 回复陌生人问题 发送消息给对方
      *
-     * @param userId 陌生人id
-     * @param reply 回复内容
+     * @param userId
+     *     陌生人id
+     * @param reply
+     *     回复内容
      *
      * @return {@link Boolean}
      */

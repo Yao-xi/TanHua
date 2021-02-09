@@ -564,8 +564,6 @@ public class MovementsService {
     
     /**
      * 查询动态 (已废弃)
-     * <p>
-     * 参考{@link MovementsService#queryPublishList(User, Integer, Integer)}
      *
      * @param page
      *     当前页码
@@ -575,6 +573,8 @@ public class MovementsService {
      *     是否查询推荐动态
      *
      * @return {@link PageResult}
+     *
+     * @deprecated 参考 {@link MovementsService#queryPublishList(User, Integer, Integer)}
      */
     @Deprecated
     public PageResult queryPublishList(Integer page, Integer pageSize, boolean isRecommend) {
