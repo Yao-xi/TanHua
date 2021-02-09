@@ -1,13 +1,18 @@
 package com.yx.tanhua.server.service;
 
+import com.alibaba.dubbo.config.annotation.Reference;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yx.tanhua.common.enums.SexEnum;
 import com.yx.tanhua.common.pojo.User;
 import com.yx.tanhua.common.pojo.UserInfo;
+import com.yx.tanhua.dubbo.server.api.UserLocationApi;
 import com.yx.tanhua.dubbo.server.pojo.RecommendUser;
 import com.yx.tanhua.dubbo.server.vo.PageInfo;
+import com.yx.tanhua.dubbo.server.vo.UserLocationVo;
 import com.yx.tanhua.server.pojo.Question;
 import com.yx.tanhua.server.utils.UserThreadLocal;
+import com.yx.tanhua.server.vo.NearUserVo;
 import com.yx.tanhua.server.vo.PageResult;
 import com.yx.tanhua.server.vo.RecommendUserQueryParam;
 import com.yx.tanhua.server.vo.TodayBest;
@@ -24,7 +29,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.AsyncRestOperations;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -64,6 +68,9 @@ public class TodayBestService {
     private QuestionService questionService;
     @Autowired
     private RestTemplate restTemplate;
+    
+    @Reference(version = "1.0.0")
+    private UserLocationApi userLocationApi;
     
     /**
      * 查询推荐用户(今日佳人)信息
@@ -125,10 +132,93 @@ public class TodayBestService {
     }
     
     /**
+     * 搜附近
+     *
+     * @param gender
+     *     性别
+     * @param distance
+     *     距离
+     *
+     * @return {@link List<NearUserVo>}
+     */
+    public List<NearUserVo> queryNearUser(String gender, String distance) {
+        // 获取当前用户
+        User user = UserThreadLocal.get();
+        // 查询当前用户的位置信息
+        UserLocationVo userLocationVo = this.userLocationApi.queryByUserId(user.getId());
+        Double longitude = userLocationVo.getLongitude();
+        Double latitude = userLocationVo.getLatitude();
+        
+        // 根据当前用户的位置信息查询附近的好友
+        List<UserLocationVo> userLocationList = this.userLocationApi
+            .queryUserFromLocation(longitude, latitude, Integer.valueOf(distance));
+        
+        if (CollectionUtils.isEmpty(userLocationList)) {
+            // 未查到附近的好友
+            return Collections.emptyList();
+        }
+        
+        // 打包用户id
+        List<Long> userIds = new ArrayList<>();
+        for (UserLocationVo locationVo : userLocationList) {
+            userIds.add(locationVo.getUserId());
+        }
+        
+        QueryWrapper<UserInfo> queryWrapper =
+            new QueryWrapper<UserInfo>().in("user_id", userIds);
+        if (StringUtils.equalsIgnoreCase(gender, "man")) {
+            queryWrapper.in("sex", SexEnum.MAN);
+        } else if (StringUtils.equalsIgnoreCase(gender, "woman")) {
+            queryWrapper.in("sex", SexEnum.WOMAN);
+        }
+        // 查mysql获取用户信息
+        List<UserInfo> userInfoList = this.userInfoService.queryList(queryWrapper);
+        Map<Long, UserInfo> userInfoMap = new HashMap<>();
+        userInfoList.forEach(userInfo -> userInfoMap.put(userInfo.getId(), userInfo));
+        
+        List<NearUserVo> nearUserVoList = new ArrayList<>();
+        
+        for (UserLocationVo locationVo : userLocationList) {
+            
+            if (locationVo.getUserId().longValue() == user.getId().longValue()) {
+                // 排除自己
+                continue;
+            }
+            
+            UserInfo userInfo = userInfoMap.get(locationVo.getUserId());
+            // 封装NearUserVo
+            NearUserVo nearUserVo = new NearUserVo();
+            nearUserVo.setUserId(userInfo.getUserId());
+            nearUserVo.setAvatar(userInfo.getLogo());
+            nearUserVo.setNickname(userInfo.getNickName());
+    
+            nearUserVoList.add(nearUserVo);
+            /*
+            for (UserInfo userInfo : userInfoList) {
+                if (locationVo.getUserId().longValue() == userInfo.getUserId().longValue()) {
+                    NearUserVo nearUserVo = new NearUserVo();
+                
+                    nearUserVo.setUserId(userInfo.getUserId());
+                    nearUserVo.setAvatar(userInfo.getLogo());
+                    nearUserVo.setNickname(userInfo.getNickName());
+                
+                    nearUserVoList.add(nearUserVo);
+                    break;
+                }
+            }
+            */
+        }
+        
+        return nearUserVoList;
+    }
+    
+    /**
      * 回复陌生人问题 发送消息给对方
      *
-     * @param userId 陌生人id
-     * @param reply 回复内容
+     * @param userId
+     *     陌生人id
+     * @param reply
+     *     回复内容
      *
      * @return {@link Boolean}
      */
