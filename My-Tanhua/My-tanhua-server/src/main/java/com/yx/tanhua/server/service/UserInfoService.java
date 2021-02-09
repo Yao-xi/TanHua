@@ -59,7 +59,9 @@ public class UserInfoService {
     /**
      * 根据用户ID查询用户详细信息
      *
-     * @param userId 用户ID
+     * @param userId
+     *     用户ID
+     *
      * @return 用户详细信息
      */
     public UserInfo queryById(Long userId) {
@@ -68,10 +70,22 @@ public class UserInfoService {
     
     /**
      * 根据查询条件,查询用户列表
-     * @param queryWrapper 查询条件
+     *
+     * @param queryWrapper
+     *     查询条件
+     *
      * @return 用户列表
      */
     public List<UserInfo> queryList(QueryWrapper<UserInfo> queryWrapper) {
         return userInfoMapper.selectList(queryWrapper);
+    }
+    
+    /**
+     * 更新用户信息
+     */
+    public Boolean updateUserInfoByUserId(UserInfo userInfo) {
+        QueryWrapper<UserInfo> queryWrapper =
+            new QueryWrapper<UserInfo>().eq("user_id", userInfo.getUserId());
+        return this.userInfoMapper.update(userInfo, queryWrapper) > 0;
     }
 }

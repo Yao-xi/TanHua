@@ -11,8 +11,8 @@ import com.baomidou.mybatisplus.annotation.IEnum;
  * @date 2021/01/17 11:41:29
  */
 public enum SexEnum implements IEnum<Integer> {
-    MAN(1, "男"),
-    WOMAN(2, "女"),
+    MAN(1, "man"),
+    WOMAN(2, "woman"),
     UNKNOWN(3, "未知");
     
     private int value;
