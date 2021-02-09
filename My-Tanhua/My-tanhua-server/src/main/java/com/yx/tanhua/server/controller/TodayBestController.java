@@ -3,6 +3,7 @@ package com.yx.tanhua.server.controller;
 import com.yx.tanhua.server.service.TodayBestService;
 import com.yx.tanhua.server.utils.Cache;
 import com.yx.tanhua.server.utils.NoAuthorization;
+import com.yx.tanhua.server.vo.NearUserVo;
 import com.yx.tanhua.server.vo.PageResult;
 import com.yx.tanhua.server.vo.RecommendUserQueryParam;
 import com.yx.tanhua.server.vo.TodayBest;
@@ -82,8 +83,10 @@ public class TodayBestController {
     /**
      * 查询今日佳人详情
      *
-     * @param userId 佳人用户id
-     * @return
+     * @param userId
+     *     佳人用户id
+     *
+     * @return {@link ResponseEntity<TodayBest>}
      */
     @GetMapping("{id}/personalInfo")
     public ResponseEntity<TodayBest> queryTodayBest(@PathVariable("id") Long userId) {
@@ -186,6 +189,28 @@ public class TodayBestController {
             log.debug("请求不喜欢~ likeUserId:"+likeUserId);
             Boolean bool = this.todayBestService.disLikeUser(likeUserId);
             return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+    
+    /**
+     * 搜附近
+     *
+     * @param gender
+     *     性别
+     * @param distance
+     *     距离
+     *
+     * @return {@link ResponseEntity<List<NearUserVo>>}
+     */
+    @GetMapping("search")
+    public ResponseEntity<List<NearUserVo>> queryNearUser(@RequestParam(value = "gender", required = false) String gender,
+                                                          @RequestParam(value = "distance", defaultValue = "2000") String distance) {
+        try {
+            List<NearUserVo> list = this.todayBestService.queryNearUser(gender, distance);
+            return ResponseEntity.ok(list);
         } catch (Exception e) {
             e.printStackTrace();
         }

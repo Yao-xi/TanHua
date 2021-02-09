@@ -22,7 +22,7 @@ public class BaiduService {
             // 获取当前用户信息
             User user = UserThreadLocal.get();
             // 远程调用
-            this.userLocationApi.updateUserLocation(user.getId(), longitude, latitude, address);
+            String id = this.userLocationApi.updateUserLocation(user.getId(), longitude, latitude, address);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
