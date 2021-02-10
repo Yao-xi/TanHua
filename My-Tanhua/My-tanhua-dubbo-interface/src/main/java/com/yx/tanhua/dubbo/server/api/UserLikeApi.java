@@ -1,5 +1,8 @@
 package com.yx.tanhua.dubbo.server.api;
 
+import com.yx.tanhua.dubbo.server.pojo.UserLike;
+import com.yx.tanhua.dubbo.server.vo.PageInfo;
+
 public interface UserLikeApi {
     
     /**
@@ -38,4 +41,77 @@ public interface UserLikeApi {
      * @return {@link Boolean}
      */
     Boolean deleteUserLike(Long userId, Long likeUserId);
+    
+    
+    /**
+     * 相互喜欢的数量
+     *
+     * @param userId
+     *     用户id
+     *
+     * @return {@link Long}
+     */
+    Long queryEachLikeCount(Long userId);
+    
+    /**
+     * 喜欢数
+     *
+     * @param userId
+     *     用户id
+     *
+     * @return {@link Long}
+     */
+    Long queryLikeCount(Long userId);
+    
+    /**
+     * 粉丝数
+     *
+     * @param userId
+     *     用户id
+     *
+     * @return {@link Long}
+     */
+    Long queryFanCount(Long userId);
+    
+    /**
+     * 查询相互喜欢列表
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     当前页码
+     * @param pageSize
+     *     每页条数
+     *
+     * @return {@link PageInfo<UserLike>}
+     */
+    PageInfo<UserLike> queryEachLikeList(Long userId, Integer page, Integer pageSize);
+    
+    /**
+     * 查询我喜欢的列表
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     当前页码
+     * @param pageSize
+     *     每页条数
+     *
+     * @return {@link PageInfo<UserLike>}
+     */
+    PageInfo<UserLike> queryLikeList(Long userId, Integer page, Integer pageSize);
+    
+    /**
+     * 查询粉丝列表
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     当前页码
+     * @param pageSize
+     *     每页条数
+     *
+     * @return {@link PageInfo<UserLike>}
+     */
+    PageInfo<UserLike> queryFanList(Long userId, Integer page, Integer pageSize);
 }

@@ -39,4 +39,18 @@ public interface VisitorsApi {
      * @return {@link List<Visitors>}
      */
     List<Visitors> topVisitor(Long userId, Long date);
+    
+    /**
+     * 按照时间倒序排序，查询最近的访客信息
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     当前页码
+     * @param pageSize
+     *     每页条数
+     *
+     * @return {@link List<Visitors>}
+     */
+    List<Visitors> topVisitor(Long userId, Integer page, Integer pageSize);
 }

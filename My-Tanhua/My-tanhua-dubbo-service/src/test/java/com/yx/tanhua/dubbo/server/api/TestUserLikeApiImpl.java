@@ -19,6 +19,10 @@ public class TestUserLikeApiImpl {
         this.userLikeApi.saveUserLike(1L,2L);
         this.userLikeApi.saveUserLike(1L,3L);
         this.userLikeApi.saveUserLike(2L,1L);
+        this.userLikeApi.saveUserLike(1L,4L);
+        this.userLikeApi.saveUserLike(4L,1L);
+        this.userLikeApi.saveUserLike(5L,1L);
+        this.userLikeApi.saveUserLike(6L,1L);
     }
 
     @Test
@@ -34,4 +38,12 @@ public class TestUserLikeApiImpl {
         System.out.println(this.userLikeApi.deleteUserLike(1L,3L));
         System.out.println(this.userLikeApi.deleteUserLike(2L,1L));
     }
+    
+    @Test
+    public void testQueryCounts(){
+        System.out.println(this.userLikeApi.queryEachLikeCount(1L));
+        System.out.println(this.userLikeApi.queryFanCount(1L));
+        System.out.println(this.userLikeApi.queryLikeCount(1L));
+    }
+    
 }

@@ -73,6 +73,26 @@ public class VisitorsApiImpl implements VisitorsApi {
         return this.queryVisitorList(query);
     }
     
+    /**
+     * 按照时间倒序排序，查询最近的访客信息
+     *
+     * @param userId
+     *     用户id
+     * @param page
+     *     当前页码
+     * @param pageSize
+     *     每页条数
+     *
+     * @return {@link List<Visitors>}
+     */
+    @Override
+    public List<Visitors> topVisitor(Long userId, Integer page, Integer pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize,
+                                           Sort.by(Sort.Order.desc("date")));
+        Query query = Query.query(Criteria.where("userId").is(userId)).with(pageable);
+        return this.queryVisitorList(query);
+    }
+    
     private List<Visitors> queryVisitorList(Query query) {
         // 查mongodb
         List<Visitors> visitors = this.mongoTemplate.find(query, Visitors.class);

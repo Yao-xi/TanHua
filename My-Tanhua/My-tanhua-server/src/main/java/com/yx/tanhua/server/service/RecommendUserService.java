@@ -79,12 +79,7 @@ public class RecommendUserService {
     }
     
     /**
-     * 查询得分
-     *
-     * @param userId
-     * @param id
-     *
-     * @return double
+     * 查询两个用户的缘分值
      */
     public double queryScore(Long userId, Long id) {
         try {
